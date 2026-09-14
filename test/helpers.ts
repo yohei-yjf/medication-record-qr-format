@@ -6,9 +6,9 @@ import { fileURLToPath } from "node:url";
  * ファイルはUTF-8・CR+LFで保存している(QRコードへの格納時にShift_JISへ変換される)。
  */
 export const readFixture = (name: string): string =>
-  readFileSync(fileURLToPath(new URL(`./fixtures/${name}`, import.meta.url)), "utf8");
+  readFileSync(fileURLToPath(new URL(`../fixtures/${name}`, import.meta.url)), "utf8");
 
 /** 付録１の出力データ例(例1〜例11)のフィクスチャ名 */
-export const EXAMPLE_FIXTURES = readdirSync(fileURLToPath(new URL("./fixtures", import.meta.url)))
+export const EXAMPLE_FIXTURES = readdirSync(fileURLToPath(new URL("../fixtures", import.meta.url)))
   .filter((name) => name.startsWith("example-"))
   .sort();

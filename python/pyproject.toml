@@ -1,0 +1,49 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "medication-record-qr-format"
+version = "0.1.0"
+description = "JAHIS電子版お薬手帳データフォーマット(Ver.2.6)のQRコードを構造化データへ変換し、構造化データからQRコードを生成するライブラリ"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+keywords = ["JAHIS", "お薬手帳", "medication", "QR", "healthcare", "japan"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Healthcare Industry",
+  "License :: OSI Approved :: MIT License",
+  "Natural Language :: Japanese",
+  "Programming Language :: Python :: 3",
+  "Typing :: Typed",
+]
+dependencies = []
+
+[project.optional-dependencies]
+# QRコードの生成
+encode = ["segno>=1.6"]
+# QRコードの読み取り
+decode = ["zxing-cpp>=2.2", "pillow>=10.0"]
+qr = ["segno>=1.6", "zxing-cpp>=2.2", "pillow>=10.0"]
+dev = ["segno>=1.6", "zxing-cpp>=2.2", "pillow>=10.0", "pytest>=8.0", "mypy>=1.11", "ruff>=0.6"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/medication_record_qr"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+# 仕様書の項目名・出力データ例に全角英数字が含まれるため、曖昧な文字の検出は無効にする
+ignore = ["RUF001", "RUF002", "RUF003"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+files = ["src", "tests"]

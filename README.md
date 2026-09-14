@@ -5,6 +5,18 @@
 
 **JAHIS電子版お薬手帳データフォーマット仕様書 Ver.2.6**(JAHIS技術文書 24-104、バージョン情報 `JAHISTC08`)に準拠しています。
 
+**TypeScript実装**(このディレクトリ)と **Python実装**([`python/`](./python/README.md))があり、
+どちらも同じ仕様定義・同じテストデータ([`fixtures/`](./fixtures))を共有しています。
+
+```
+.
+├── src/           TypeScript実装
+├── test/          TypeScript実装のテスト
+├── python/        Python実装(src/ tests/ examples/)
+├── fixtures/      仕様書「付録１ 出力データ例」(両実装が共有するテストデータ)
+└── SPEC-NOTES.md  仕様の対応状況と、仕様書内で記載が一致していない箇所
+```
+
 ## 特徴
 
 - **QRコード → 構造化データ**: PNG画像・RGBA画素データ・テキストのいずれからでも読み取れます
@@ -242,11 +254,18 @@ QRコードの容量を節約したい場合は `omitTrailingEmptyFields: true` 
 ## 開発
 
 ```bash
+# TypeScript実装
 npm install
 npm test          # vitest
 npm run typecheck # tsc --noEmit
 npm run build     # tsup (ESM + CJS + d.ts)
 npm run check     # 上記すべて
+
+# Python実装
+cd python
+python -m venv .venv && . .venv/bin/activate
+pip install -e ".[dev]"
+pytest && mypy && ruff check .
 ```
 
 テストでは次を検証しています。
@@ -259,6 +278,9 @@ npm run check     # 上記すべて
 - テキストの往復(解析 → 出力で元のテキストと完全一致)
 - QRコードの往復(構造化データ → PNG画像 → 実際にQRコードを読み取り → 構造化データ)
 - 仕様書 3.2.9(3) の分割出力例の結合、および任意サイズでの分割・結合
+
+両実装とも同じフィクスチャに対して「解析 → 出力で元のテキストと完全一致」を検証しているため、
+TypeScript実装とPython実装の出力テキストは一致します。
 
 ## ライセンス
 

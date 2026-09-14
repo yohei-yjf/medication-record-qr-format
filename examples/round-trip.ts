@@ -17,7 +17,7 @@ import {
 } from "../src/index.js";
 
 // 仕様書「付録１ お薬手帳イメージと出力データ例」の例4(複数診療科での出力)
-const text = readFileSync(new URL("../test/fixtures/example-04.txt", import.meta.url), "utf8");
+const text = readFileSync(new URL("../fixtures/example-04.txt", import.meta.url), "utf8");
 
 // 1. テキスト -> 構造化データ
 const { notebook, issues } = parse(text);

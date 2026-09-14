@@ -2,21 +2,21 @@
 
 対象仕様: **JAHIS電子版お薬手帳データフォーマット仕様書 Ver.2.6**(JAHIS技術文書 24-104 / 2024年9月)
 
-実装は仕様書PDFの以下の箇所に基づいています。
+TypeScript実装とPython実装は同じ構成で、仕様書PDFの以下の箇所に対応しています。
 
-| 仕様書の箇所 | 実装 |
-| --- | --- |
-| 3.1 バージョン情報 | `src/spec/version.ts` |
-| 3.2.1 ファイル形式 / 3.2.3 ASCIIコード / 3.2.4 注意事項等 | `src/text/records.ts`, `src/qr/charset.ts` |
-| 3.2.2 データの型 | `FieldType`(9/X/N) と `src/validate.ts` |
-| 3.2.5 情報グループとレコード情報 | `src/types.ts` |
-| 3.2.6 レコード出力順 | `src/serialize.ts` |
-| 3.2.7 レコード出力条件 | `RecordSpec.repetition`, `FieldSpec.required` |
-| 3.2.8 各種レコードレイアウト | `src/spec/records.ts` |
-| 3.2.9(1) RP番号について | `Rp` / `DoctorGroup` の組み立て(`src/parse.ts`) |
-| 3.2.9(3) データを分割した場合の出力方法 | `src/qr/split.ts` |
-| 別表1〜4 各種コード表 | `src/spec/codes.ts` |
-| 付録1 お薬手帳イメージと出力データ例 | `test/fixtures/example-01..11.txt` |
+| 仕様書の箇所 | TypeScript | Python |
+| --- | --- | --- |
+| 3.1 バージョン情報 | `src/spec/version.ts` | `spec/version.py` |
+| 3.2.1 ファイル形式 / 3.2.3 ASCIIコード / 3.2.4 注意事項等 | `src/text/records.ts`, `src/qr/charset.ts` | `text.py`, `qr/charset.py` |
+| 3.2.2 データの型 | `FieldType`(9/X/N), `src/validate.ts` | `FieldType`, `validation.py` |
+| 3.2.5 情報グループとレコード情報 | `src/types.ts` | `models.py` |
+| 3.2.6 レコード出力順 | `src/serialize.ts` | `serializer.py` |
+| 3.2.7 レコード出力条件 | `RecordSpec.repetition`, `FieldSpec.required` | 同左 |
+| 3.2.8 各種レコードレイアウト | `src/spec/records.ts` | `spec/records.py` |
+| 3.2.9(1) RP番号について | `Rp` / `DoctorGroup` の組み立て(`src/parse.ts`) | `parser.py` |
+| 3.2.9(3) データを分割した場合の出力方法 | `src/qr/split.ts` | `qr/split.py` |
+| 別表1〜4 各種コード表 | `src/spec/codes.ts` | `spec/codes.py` |
+| 付録1 お薬手帳イメージと出力データ例 | `fixtures/example-01..11.txt`(両実装で共有) | 同左 |
 
 ## 実装上の要点
 
@@ -42,6 +42,14 @@ Ver.2.6 のバージョン情報は **`JAHISTC08`** です(Ver.2.5 と同じ。V
 
 西暦8桁(`YYYYMMDD`)と和暦7桁(`GYYMMDD`、年号は別表1の M/T/S/H/R)の両方を受け付けます。
 値は変換せず、記録されたままの文字列として保持します。
+
+### 文字コード
+
+仕様書は Shift_JIS(JIS X 0201-1976 の8単位符号および JIS X 0208-1983 附属書1)を前提としています。
+実装上は、実際の医療システムで使われている Windows-31J を既定としています
+(TypeScript: iconv-lite の `Shift_JIS`、Python: `cp932`)。
+Python標準の `shift_jis` コーデックは波ダッシュ・全角チルダの扱いが異なり、
+仕様書の出力データ例に含まれる `Ｂ＋` や `～` の変換に失敗するためです。
 
 ### 末尾の空項目
 
