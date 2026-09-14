@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   QrCodeError,
   byteLength,
+  collectDrugs,
   decodeQrFromPng,
   encodeNotebookToDataUrls,
   encodeNotebookToPngs,
@@ -10,6 +11,7 @@ import {
   mergeSplitParts,
   parse,
   readNotebookFromPngs,
+  readNotebookFromTexts,
   serialize,
   splitForQr,
   toQrTexts,
@@ -166,6 +168,54 @@ describe("複数シンボルへの分割(仕様書 3.2.9(3))", () => {
         issue.message.includes("重複"),
       ),
     ).toBe(true);
+  });
+
+  it("どのシンボルが足りないかを報告する", () => {
+    // 読み取る側が「あと2枚です」と案内できるように、足りない事実だけでなく
+    // 何番が足りないかを返す。
+    const parts = splitForQr(readFixture("example-04.txt"), { maxBytesPerSymbol: 300 });
+    expect(parts.length).toBeGreaterThanOrEqual(3);
+
+    const merged = mergeSplitParts(parts.slice(0, 1));
+
+    expect(merged.complete).toBe(false);
+    expect(merged.missingSequences).toEqual(parts.map((_, index) => index + 1).slice(1));
+    expect(merged.issues.some((issue) => issue.message.includes("データ連番"))).toBe(true);
+
+    expect(mergeSplitParts(parts).complete).toBe(true);
+    expect(mergeSplitParts(parts).missingSequences).toEqual([]);
+  });
+
+  it("分割された1枚だけを読んでも「揃った」とは扱わない", () => {
+    // 分割された1枚だけを読むと、そのテキスト単体は仕様どおりに解析できて
+    // しまう。結合を通さずに返していたころは、薬が半分しかないお薬手帳が
+    // 警告なく ok で返っていた。
+    const notebook = notebookOf("example-04.txt");
+    const parts = toQrTexts(notebook, { maxBytesPerSymbol: 300 });
+    expect(parts.length).toBeGreaterThanOrEqual(2);
+
+    const partial = readNotebookFromTexts(parts.slice(0, 1));
+
+    expect(partial.ok).toBe(false);
+    expect(partial.complete).toBe(false);
+    expect(partial.totalCount).toBe(parts.length);
+    expect(partial.missingSequences).toEqual(parts.map((_, index) => index + 1).slice(1));
+    expect([...collectDrugs(partial.notebook)].length).toBeLessThan([...collectDrugs(notebook)].length);
+
+    const whole = readNotebookFromTexts(parts);
+    expect(whole.ok).toBe(true);
+    expect(whole.complete).toBe(true);
+    expect([...collectDrugs(whole.notebook)].map(({ drug }) => drug.name)).toEqual(
+      [...collectDrugs(notebook)].map(({ drug }) => drug.name),
+    );
+  });
+
+  it("分割されていない1枚はそれだけで揃っている", () => {
+    const whole = readNotebookFromTexts([readFixture("example-01.txt")]);
+    expect(whole.ok).toBe(true);
+    expect(whole.complete).toBe(true);
+    expect(whole.totalCount).toBe(1);
+    expect(whole.missingSequences).toEqual([]);
   });
 
   it("末尾の空項目を省略するとQRコードの容量を節約できる", () => {

@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+import io
+
 import pytest
 
 from medication_record_qr import (
     QrCodeError,
     byte_length,
+    collect_drugs,
+    decode_all_qr_from_image,
     decode_qr_from_png,
     encode_notebook_to_data_uris,
     encode_notebook_to_pngs,
@@ -15,6 +19,7 @@ from medication_record_qr import (
     merge_split_parts,
     parse,
     read_notebook_from_pngs,
+    read_notebook_from_texts,
     serialize,
     split_for_qr,
     to_qr_texts,
@@ -191,6 +196,84 @@ class TestSplit:
 
         duplicated = merge_split_parts([parts[0], parts[0], *parts[1:-1]])
         assert any("重複" in issue.message for issue in duplicated.issues)
+
+    def test_which_symbols_are_missing_is_reported(self) -> None:
+        # 読み取る側が「あと2枚です」と案内できるように、足りない事実だけで
+        # なく、何番が足りないかを返す。
+        parts = split_for_qr(read_fixture("example-04.txt"), max_bytes_per_symbol=300)
+        assert len(parts) >= 3
+
+        merged = merge_split_parts([parts[0]])
+
+        assert merged.complete is False
+        assert merged.missing_sequences == tuple(range(2, len(parts) + 1))
+        assert any(f"データ連番 {merged.missing_sequences[0]}" in issue.message for issue in merged.issues)
+
+        assert merge_split_parts(parts).complete is True
+        assert merge_split_parts(parts).missing_sequences == ()
+
+    def test_a_single_symbol_of_a_split_set_is_not_read_as_complete(self) -> None:
+        # 分割された1枚だけを読むと、そのテキスト単体は仕様どおりに解析できて
+        # しまう。結合を通さずに返していたころは、薬が半分しかないお薬手帳が
+        # 警告なく `ok` で返っていた。
+        notebook = notebook_of("example-04.txt")
+        parts = to_qr_texts(notebook, max_bytes_per_symbol=300)
+        assert len(parts) >= 2
+
+        partial = read_notebook_from_texts(parts[:1])
+
+        assert partial.ok is False, "足りないまま ok で返してはいけない"
+        assert partial.complete is False
+        assert partial.total_count == len(parts)
+        assert partial.missing_sequences == tuple(range(2, len(parts) + 1))
+        assert len(list(collect_drugs(partial.notebook))) < len(list(collect_drugs(notebook)))
+
+        whole = read_notebook_from_texts(parts)
+        assert whole.ok is True
+        assert whole.complete is True
+        assert [drug.name for *_, drug in collect_drugs(whole.notebook)] == [
+            drug.name for *_, drug in collect_drugs(notebook)
+        ]
+
+    def test_an_unsplit_symbol_is_complete_on_its_own(self) -> None:
+        whole = read_notebook_from_texts([read_fixture("example-01.txt")])
+        assert whole.ok is True
+        assert whole.complete is True
+        assert whole.total_count == 1
+        assert whole.missing_sequences == ()
+
+    def test_every_symbol_on_one_sheet_is_read(self) -> None:
+        # 分割されたシンボルは薬剤情報提供書の1枚に並べて印刷されることが多く、
+        # 写真1枚に全部写る。1つだけ読んで返すと半分しか取り込めない。
+        from PIL import Image
+
+        notebook = notebook_of("example-04.txt")
+        pngs = encode_notebook_to_pngs(notebook, max_bytes_per_symbol=300, scale=4)
+        assert len(pngs) >= 2
+
+        images = [Image.open(io.BytesIO(png)).convert("L") for png in pngs]
+        gap = 40
+        sheet = Image.new(
+            "L",
+            (
+                sum(image.width for image in images) + gap * (len(images) + 1),
+                max(image.height for image in images) + gap * 2,
+            ),
+            255,
+        )
+        x = gap
+        for image in images:
+            sheet.paste(image, (x, gap))
+            x += image.width + gap
+
+        texts = decode_all_qr_from_image(sheet)
+        assert len(texts) == len(pngs)
+
+        read = read_notebook_from_texts(texts)
+        assert read.complete is True
+        assert [drug.name for *_, drug in collect_drugs(read.notebook)] == [
+            drug.name for *_, drug in collect_drugs(notebook)
+        ]
 
     def test_omitting_trailing_empty_fields_saves_space(self) -> None:
         notebook = notebook_of("example-04.txt")

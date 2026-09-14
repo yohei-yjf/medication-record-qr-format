@@ -28,6 +28,14 @@ class MergeResult:
     total_count: int
     data_id: str | None = None
     issues: list[Issue] = field(default_factory=list)
+    #: まだ読み取れていないデータ連番。読み取る側が「あと2枚です」と
+    #: 案内できるよう、不足の事実だけでなく何番が足りないかを返す。
+    missing_sequences: tuple[int, ...] = ()
+
+    @property
+    def complete(self) -> bool:
+        """分割されたシンボルが揃っているか。"""
+        return not self.missing_sequences
 
 
 def _generate_data_id() -> str:
@@ -146,6 +154,8 @@ def merge_split_parts(parts: Sequence[str], newline: str = RECORD_SEPARATOR) -> 
     """分割された複数シンボル分のテキストを1つのテキストへ復元する。
 
     分割制御レコード(911)のデータ連番順に並べ替えるため、読み取り順は問わない。
+    1件だけ渡しても構わない — その1件が分割の一部なら、足りないデータ連番を
+    :attr:`MergeResult.missing_sequences` で返す。
     """
     issues: list[Issue] = []
 
@@ -163,8 +173,6 @@ def merge_split_parts(parts: Sequence[str], newline: str = RECORD_SEPARATOR) -> 
         error(f"分割数が一致していません: {', '.join(str(count) for count in total_counts)}")
 
     expected_total = total_counts[0] if total_counts else None
-    if expected_total is not None and expected_total != len(parts):
-        error(f"分割数 {expected_total} に対して {len(parts)} 件のシンボルしかありません。")
 
     ordered = sorted(decoded, key=lambda part: part.sequence if part.sequence is not None else 1)
     seen: set[int] = set()
@@ -174,6 +182,16 @@ def merge_split_parts(parts: Sequence[str], newline: str = RECORD_SEPARATOR) -> 
         if part.sequence in seen:
             error(f"データ連番 {part.sequence} のシンボルが重複しています。")
         seen.add(part.sequence)
+
+    missing: tuple[int, ...] = ()
+    if expected_total is not None:
+        missing = tuple(number for number in range(1, expected_total + 1) if number not in seen)
+        if missing:
+            error(
+                f"分割数 {expected_total} のうち "
+                f"データ連番 {', '.join(str(number) for number in missing)} "
+                f"のシンボルが読み取れていません。"
+            )
 
     version_line = ordered[0].version_line if ordered else None
     lines: list[str] = []
@@ -187,4 +205,5 @@ def merge_split_parts(parts: Sequence[str], newline: str = RECORD_SEPARATOR) -> 
         total_count=expected_total if expected_total is not None else len(parts),
         data_id=data_ids[0] if data_ids else None,
         issues=issues,
+        missing_sequences=missing,
     )

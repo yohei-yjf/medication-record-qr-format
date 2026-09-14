@@ -56,12 +56,38 @@ export const decodeQrFromPng = (png: Buffer | Uint8Array, options: DecodeOptions
 export interface ReadResult extends ParseResult {
   /** 複数シンボルの結合時に検出した問題 */
   readonly mergeIssues: readonly Issue[];
+  /** 分割制御レコード(911)が示す分割数。分割されていなければ 1 */
+  readonly totalCount: number;
+  /** まだ読み取れていないデータ連番。空なら揃っている */
+  readonly missingSequences: readonly number[];
+  /**
+   * 分割されたシンボルが揃っているか。
+   *
+   * シンボルが足りなければ `ok` も false になりますが、`ok` は解析エラーでも
+   * false になります。「あと1枚読み取ってください」と「このデータは読めません」
+   * を区別したい場合はこちらを見てください。
+   */
+  readonly complete: boolean;
 }
 
 export const readNotebookFromTexts = (texts: readonly string[], options: ParseOptions = {}): ReadResult => {
   if (texts.length === 0) throw new QrCodeError("読み取り対象のテキストが1件もありません。");
-  const merged = texts.length === 1 ? { text: texts[0]!, issues: [] } : mergeSplitParts(texts);
-  return { ...parse(merged.text, options), mergeIssues: merged.issues };
+  // 1件でも結合を通します。分割された2枚のうち1枚だけを読んだ場合、そのテキスト
+  // 単体は仕様どおりに解析できてしまうため、素通しすると「半分の薬しか無いお薬
+  // 手帳」が何の警告も無く返ります。分割制御レコードは1枚目にも入っているので、
+  // 足りないことは1枚でも分かります。
+  const merged = mergeSplitParts(texts);
+  const parsed = parse(merged.text, options);
+  // 結合時の問題も error として上げている以上、`ok` に効かないのはおかしい。
+  const mergeFailed = merged.issues.some((issue) => issue.level === "error");
+  return {
+    ...parsed,
+    ok: parsed.ok && !mergeFailed,
+    mergeIssues: merged.issues,
+    totalCount: merged.totalCount,
+    missingSequences: merged.missingSequences,
+    complete: merged.complete,
+  };
 };
 
 /** PNG画像(複数可)からお薬手帳データを読み取り、構造化データへ変換する。 */

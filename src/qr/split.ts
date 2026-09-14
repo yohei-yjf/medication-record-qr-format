@@ -97,6 +97,14 @@ export interface MergeResult {
   /** 分割制御レコードが示す分割数 */
   readonly totalCount: number;
   readonly issues: readonly Issue[];
+  /**
+   * まだ読み取れていないデータ連番。
+   * 読み取る側が「あと2枚です」と案内できるよう、不足の事実だけでなく
+   * 何番が足りないかを返します。
+   */
+  readonly missingSequences: readonly number[];
+  /** 分割されたシンボルが揃っているか */
+  readonly complete: boolean;
 }
 
 interface SplitPart {
@@ -130,6 +138,9 @@ const decodePart = (text: string): SplitPart => {
 /**
  * 分割された複数シンボル分のテキストを1つのテキストへ復元する。
  * 分割制御レコード(911)のデータ連番順に並べ替えるため、読み取り順は問わない。
+ *
+ * 1件だけ渡しても構いません — その1件が分割の一部なら、足りないデータ連番を
+ * `missingSequences` で返します。
  */
 export const mergeSplitParts = (parts: readonly string[], newline: string = RECORD_SEPARATOR): MergeResult => {
   const issues: Issue[] = [];
@@ -152,9 +163,6 @@ export const mergeSplitParts = (parts: readonly string[], newline: string = RECO
   }
 
   const expectedTotal = [...totalCounts][0];
-  if (expectedTotal !== undefined && expectedTotal !== parts.length) {
-    error(`分割数 ${expectedTotal} に対して ${parts.length} 件のシンボルしかありません。`);
-  }
 
   const ordered = [...decoded].sort((a, b) => (a.sequence ?? 1) - (b.sequence ?? 1));
   const seen = new Set<number>();
@@ -164,6 +172,16 @@ export const mergeSplitParts = (parts: readonly string[], newline: string = RECO
     seen.add(part.sequence);
   }
 
+  const missingSequences: number[] = [];
+  if (expectedTotal !== undefined) {
+    for (let number = 1; number <= expectedTotal; number += 1) {
+      if (!seen.has(number)) missingSequences.push(number);
+    }
+    if (missingSequences.length > 0) {
+      error(`分割数 ${expectedTotal} のうち データ連番 ${missingSequences.join(", ")} のシンボルが読み取れていません。`);
+    }
+  }
+
   const versionLine = ordered[0]?.versionLine;
   const lines = versionLine === undefined ? [] : [versionLine, ...ordered.flatMap((part) => part.bodyLines)];
 
@@ -171,6 +189,8 @@ export const mergeSplitParts = (parts: readonly string[], newline: string = RECO
     text: lines.join(newline),
     totalCount: expectedTotal ?? parts.length,
     issues,
+    missingSequences,
+    complete: missingSequences.length === 0,
   };
   const dataId = [...dataIds][0];
   return dataId === undefined ? result : { ...result, dataId };

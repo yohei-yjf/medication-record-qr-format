@@ -3,6 +3,8 @@
 from .charset import DEFAULT_ENCODING, byte_length, decode_text, encode_text, unencodable_characters
 from .decode import (
     ReadResult,
+    decode_all_qr_from_image,
+    decode_all_qr_from_png,
     decode_qr_from_image,
     decode_qr_from_png,
     read_notebook_from_images,
@@ -28,6 +30,8 @@ __all__ = [
     "MergeResult",
     "ReadResult",
     "byte_length",
+    "decode_all_qr_from_image",
+    "decode_all_qr_from_png",
     "decode_qr_from_image",
     "decode_qr_from_png",
     "decode_text",
