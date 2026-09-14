@@ -14,8 +14,11 @@
 ├── test/          TypeScript実装のテスト
 ├── python/        Python実装(src/ tests/ examples/)
 ├── fixtures/      仕様書「付録１ 出力データ例」(両実装が共有するテストデータ)
+├── docs/          サンプルQRコードの調査結果など
 └── SPEC-NOTES.md  仕様の対応状況と、仕様書内で記載が一致していない箇所
 ```
+
+公開されているサンプルQRコード／データの調査結果は [docs/qr-code-samples.md](./docs/qr-code-samples.md) にまとめています。
 
 ## 特徴
 
