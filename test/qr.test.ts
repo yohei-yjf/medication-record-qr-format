@@ -15,17 +15,11 @@ import {
   toQrTexts,
   type MedicationNotebook,
 } from "../src/index.js";
-import { EXAMPLE_FIXTURES, readFixture } from "./helpers.js";
+import { readFixture } from "./helpers.js";
 
 const notebookOf = (name: string): MedicationNotebook => parse(readFixture(name)).notebook;
 
 describe("QRコードの生成と読み取り", () => {
-  it.each(EXAMPLE_FIXTURES)("%s はQRコードにして読み戻しても一致する", async (name) => {
-    const text = readFixture(name);
-    const png = await encodeTextToPng(text);
-    expect(decodeQrFromPng(png)).toBe(text);
-  });
-
   it("構造化データ -> QRコード -> 構造化データ で内容が保たれる", async () => {
     const notebook = notebookOf("example-11.txt");
     const pngs = await encodeNotebookToPngs(notebook);

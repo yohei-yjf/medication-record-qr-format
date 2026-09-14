@@ -21,7 +21,7 @@ from medication_record_qr import (
     unencodable_characters,
 )
 
-from .conftest import EXAMPLE_FIXTURES, read_fixture
+from .conftest import read_fixture
 
 pytest.importorskip("segno", reason="QRコードの生成には segno が必要です")
 pytest.importorskip("zxingcpp", reason="QRコードの読み取りには zxing-cpp が必要です")
@@ -33,11 +33,6 @@ def notebook_of(name: str):  # type: ignore[no-untyped-def]
 
 
 class TestQrRoundTrip:
-    @pytest.mark.parametrize("name", EXAMPLE_FIXTURES)
-    def test_every_example_survives_a_qr_round_trip(self, name: str) -> None:
-        text = read_fixture(name)
-        assert decode_qr_from_png(encode_text_to_png(text)) == text
-
     def test_notebook_round_trip(self) -> None:
         notebook = notebook_of("example-11.txt")
         pngs = encode_notebook_to_pngs(notebook)

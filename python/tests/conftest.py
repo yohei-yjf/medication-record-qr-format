@@ -22,6 +22,9 @@ def read_fixture(name: str) -> str:
 #: 付録１の出力データ例(例1〜例11)
 EXAMPLE_FIXTURES = sorted(path.name for path in FIXTURES_DIR.glob("example-*.txt"))
 
+#: 分割出力例を含む全フィクスチャ
+ALL_FIXTURES = sorted(path.name for path in FIXTURES_DIR.glob("*.txt"))
+
 #: 出力データ例がレコードレイアウトと一致していないもの(SPEC-NOTES.md 参照)
 INCONSISTENT_EXAMPLES = ("example-07.txt", "example-08.txt", "example-11.txt")
 
